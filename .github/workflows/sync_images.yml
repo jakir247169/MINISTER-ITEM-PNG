@@ -1,0 +1,36 @@
+name: Sync Images from ShahGCreator/icon
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # প্রতিদিন UTC 6:00 PM = BDT 12:00 AM
+  workflow_dispatch:
+
+jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests
+
+      - name: 🔄 Run download script
+        run: python download_images.py
+
+      - name: 📤 Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add PNG/
+          git diff --staged --quiet || git commit -m "🔄 Auto sync images - $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
