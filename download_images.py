@@ -19,7 +19,7 @@ def get_all_png_files():
         url = f"https://api.github.com/repos/{SOURCE_OWNER}/{SOURCE_REPO}/contents/{SOURCE_PATH}?ref={BRANCH}&page={page}&per_page=100"
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code != 200:
-            print(f"API error: {resp.status_code}")
+            print(f"⚠️ API warning: {resp.status_code} - continuing with partial list")
             break
         data = resp.json()
         if not data:
@@ -34,10 +34,15 @@ def get_all_png_files():
     return files
 
 def download_file(url, filename):
+    filepath = os.path.join(IMAGE_DIR, filename)
+    
+    if os.path.exists(filepath):
+        print(f"⏭️ Skipped (already exists): {filename}")
+        return False
+    
     try:
         resp = requests.get(url, stream=True)
         if resp.status_code == 200:
-            filepath = os.path.join(IMAGE_DIR, filename)
             with open(filepath, "wb") as f:
                 for chunk in resp.iter_content(1024):
                     f.write(chunk)
@@ -48,16 +53,34 @@ def download_file(url, filename):
     return False
 
 def main():
-    print("🚀 Downloading PNGs from ShahGCreator/icon...")
-    files = get_all_png_files()
-    print(f"📁 Total {len(files)} PNG files found")
-    success = 0
-    for url in files:
+    print("🚀 Checking for new PNGs from ShahGCreator/icon...")
+    
+    remote_files = get_all_png_files()
+    total_remote = len(remote_files)
+    print(f"📁 Remote: {total_remote} PNG files found")
+    
+    local_files = [f for f in os.listdir(IMAGE_DIR) if f.endswith(".png")]
+    print(f"📂 Local: {len(local_files)} PNG files already exist")
+    
+    new_files = 0
+    batch_size = 100
+    total_downloaded = 0
+    
+    for idx, url in enumerate(remote_files, start=1):
         filename = url.split("/")[-1]
         if download_file(url, filename):
-            success += 1
-        time.sleep(0.2)
-    print(f"🎉 Done! {success} files downloaded")
+            new_files += 1
+            total_downloaded += 1
+        
+        # প্রতি ১০০টি ফাইল ডাউনলোডের পর স্ট্যাটাস দেখাও
+        if idx % batch_size == 0 or idx == total_remote:
+            print(f"📊 Progress: {idx}/{total_remote} files processed, {total_downloaded} new files downloaded so far")
+        
+        time.sleep(0.2)  # রেট লিমিট এড়াতে
+    
+    print(f"🎉 Done! Total {new_files} new files downloaded")
+    if new_files == 0:
+        print("✅ No new files to download. Repository is up to date.")
 
 if __name__ == "__main__":
     main()
