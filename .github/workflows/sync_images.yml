@@ -2,7 +2,7 @@ name: Sync Images from ShahGCreator/icon
 
 on:
   schedule:
-    - cron: '0 18 * * *'   # প্রতিদিন BDT 12:00 AM (UTC 6:00 PM)
+    - cron: '0 18 * * *'
   workflow_dispatch:
 
 jobs:
@@ -28,16 +28,3 @@ jobs:
 
       - name: 🔄 Run download script
         run: python download_images.py
-
-      - name: 📤 Commit and push changes (fallback)
-        if: always()
-        run: |
-          git config --global user.name "jakir247169"
-          git config --global user.email "smjakirh2471@gmail.com"
-          git add PNG/
-          if ! git diff --staged --quiet; then
-            git commit -m "🔄 Auto sync images - $(date +'%Y-%m-%d %H:%M:%S')"
-            git push
-          else
-            echo "✅ No changes to commit"
-          fi
