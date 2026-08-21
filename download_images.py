@@ -20,7 +20,7 @@ def get_all_png_files():
         url = f"https://api.github.com/repos/{SOURCE_OWNER}/{SOURCE_REPO}/contents/{SOURCE_PATH}?ref={BRANCH}&page={page}&per_page=100"
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code != 200:
-            print(f"⚠️ API warning: {resp.status_code} - continuing with partial list")
+            print(f"⚠️ API warning: {resp.status_code}")
             break
         data = resp.json()
         if not data:
@@ -44,43 +44,38 @@ def download_file(url, filename):
             with open(filepath, "wb") as f:
                 for chunk in resp.iter_content(1024):
                     f.write(chunk)
-            print(f"✅ Downloaded: {filename}")
             return True
-    except Exception as e:
-        print(f"❌ Failed: {filename} - {e}")
+    except Exception:
+        return False
     return False
 
 def main():
-    print("🚀 Starting download from ShahGCreator/icon...")
+    print("🚀 Downloading all PNGs from ShahGCreator/icon...")
     remote_files = get_all_png_files()
     total_remote = len(remote_files)
-    print(f"📁 Total PNG files in source: {total_remote}")
+    print(f"📁 Total remote PNG files: {total_remote}")
 
     local_files = [f for f in os.listdir(IMAGE_DIR) if f.endswith(".png")]
     print(f"📂 Already downloaded: {len(local_files)} files")
 
     new_files = 0
-    for idx, url in enumerate(remote_files, start=1):
+    for url in remote_files:
         filename = url.split("/")[-1]
         if download_file(url, filename):
             new_files += 1
-        if idx % 100 == 0 or idx == total_remote:
-            print(f"📊 Progress: {idx}/{total_remote} files processed, {new_files} new files downloaded so far")
-        time.sleep(0.15)
 
     if new_files == 0:
         print("✅ No new files. Nothing to commit.")
         return
 
-    # এখন সব ফাইল একসাথে কমিট ও পুশ
-    print("📤 Committing and pushing all new files at once...")
+    print(f"📥 Downloaded {new_files} new files. Committing and pushing...")
     try:
         subprocess.run(["git", "config", "--global", "user.name", "jakir247169"], check=True)
         subprocess.run(["git", "config", "--global", "user.email", "smjakirh2471@gmail.com"], check=True)
         subprocess.run(["git", "add", "PNG/"], check=True)
         subprocess.run(["git", "commit", "-m", f"🔄 Added {new_files} new PNG images"], check=True)
         subprocess.run(["git", "push"], check=True)
-        print("✅ All new files successfully pushed to GitHub!")
+        print(f"✅ Successfully pushed {new_files} new files to GitHub!")
     except subprocess.CalledProcessError as e:
         print(f"❌ Git error: {e}")
 
