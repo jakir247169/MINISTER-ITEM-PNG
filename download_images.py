@@ -37,7 +37,7 @@ def get_all_png_files():
 def download_file(url, filename):
     filepath = os.path.join(IMAGE_DIR, filename)
     if os.path.exists(filepath):
-        return False  # skipped
+        return False
     try:
         resp = requests.get(url, stream=True)
         if resp.status_code == 200:
@@ -50,6 +50,18 @@ def download_file(url, filename):
         print(f"❌ Failed: {filename} - {e}")
     return False
 
+def commit_and_push(batch_num, count):
+    """ব্যাচ কমিট ও পুশ করে (তোমার ইউজারনেম ও ইমেইল ব্যবহার করে)"""
+    try:
+        subprocess.run(["git", "config", "--global", "user.name", "jakir247169"], check=True)
+        subprocess.run(["git", "config", "--global", "user.email", "smjakirh2471@gmail.com"], check=True)
+        subprocess.run(["git", "add", "PNG/"], check=True)
+        subprocess.run(["git", "commit", "-m", f"🔄 Batch {batch_num}: {count} new images"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print(f"📤 Batch {batch_num} committed and pushed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️ Git error in batch {batch_num}: {e}")
+
 def main():
     print("🚀 Checking for new PNGs from ShahGCreator/icon...")
     remote_files = get_all_png_files()
@@ -59,32 +71,32 @@ def main():
     local_files = [f for f in os.listdir(IMAGE_DIR) if f.endswith(".png")]
     print(f"📂 Local: {len(local_files)} PNG files already exist")
     
-    new_files = 0
+    batch_size = 2000
+    new_files_in_batch = 0
+    batch_number = 1
+    total_new_files = 0
+
     for idx, url in enumerate(remote_files, start=1):
         filename = url.split("/")[-1]
         if download_file(url, filename):
-            new_files += 1
+            new_files_in_batch += 1
+            total_new_files += 1
+        
+        if new_files_in_batch >= batch_size:
+            commit_and_push(batch_number, new_files_in_batch)
+            batch_number += 1
+            new_files_in_batch = 0
         
         if idx % 100 == 0 or idx == total_remote:
-            print(f"📊 Progress: {idx}/{total_remote} files processed, {new_files} new files downloaded so far")
+            print(f"📊 Progress: {idx}/{total_remote} files processed, {total_new_files} new files downloaded so far")
         
         time.sleep(0.15)
     
-    # সব ডাউনলোড শেষে Git কমিট করো (যদি নতুন ফাইল থাকে)
-    if new_files > 0:
-        print("📤 Committing and pushing all new files...")
-        try:
-            # Git কনফিগারেশন সেট করো
-            subprocess.run(["git", "config", "--global", "user.name", "jakir247169"], check=True)
-            subprocess.run(["git", "config", "--global", "user.email", "smjakirh2471@gmail.com"], check=True)
-            
-            subprocess.run(["git", "add", "PNG/"], check=True)
-            subprocess.run(["git", "commit", "-m", f"🔄 Auto sync: {new_files} new images"], check=True)
-            subprocess.run(["git", "push"], check=True)
-            print("✅ Successfully committed and pushed all new files.")
-        except subprocess.CalledProcessError as e:
-            print(f"⚠️ Git error: {e}")
-    else:
+    if new_files_in_batch > 0:
+        commit_and_push(batch_number, new_files_in_batch)
+    
+    print(f"🎉 Done! Total {total_new_files} new files downloaded in {batch_number} batches.")
+    if total_new_files == 0:
         print("✅ No new files to download. Repository is up to date.")
 
 if __name__ == "__main__":
